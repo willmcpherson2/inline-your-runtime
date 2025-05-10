@@ -1,32 +1,47 @@
-struct Foo {
-    numbers: Vec<i32>,
+#![no_std]
+#![allow(internal_features, non_upper_case_globals)]
+#![feature(linkage, rustc_attrs)]
+
+extern crate alloc;
+
+use alloc::{
+    alloc::{GlobalAlloc, Layout},
+    boxed::Box,
+};
+use core::panic::PanicInfo;
+use libc::{aligned_alloc, c_void, free};
+
+struct Allocator;
+
+unsafe impl GlobalAlloc for Allocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        unsafe { aligned_alloc(layout.align(), layout.size()) as *mut u8 }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+        unsafe { free(ptr as *mut c_void) };
+    }
 }
 
-impl Foo {
-    #[no_mangle]
-    pub extern "C" fn new_foo() -> Box<Self> {
-        Box::new(Foo {
-            numbers: vec![1, 2, 3],
-        })
-    }
+#[global_allocator]
+static GLOBAL: Allocator = Allocator;
 
-    #[no_mangle]
-    pub extern "C" fn free_foo(_foo: Box<Foo>) {}
-
-    #[no_mangle]
-    pub extern "C" fn sum_foo(&self) -> i32 {
-        self.numbers.iter().sum()
-    }
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {}
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
+#[rustc_std_internal_symbol]
+#[linkage = "weak"]
+static __rust_no_alloc_shim_is_unstable: u8 = 0;
 
-    #[test]
-    fn test_foo() {
-        let foo = Foo::new_foo();
-        assert_eq!(foo.sum_foo(), 6);
-        Foo::free_foo(foo);
-    }
+#[rustc_std_internal_symbol]
+#[linkage = "weak"]
+fn __rust_alloc_error_handler(size: usize, align: usize) {
+    panic!("allocation failed: size: {}, align: {}", size, align);
+}
+
+#[no_mangle]
+pub extern "C" fn foo() -> Box<i32> {
+    Box::new(42)
 }

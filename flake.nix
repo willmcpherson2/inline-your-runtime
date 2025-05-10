@@ -28,6 +28,7 @@
         devShells.default = pkgs.mkShell {
           buildInputs = [
             llvm
+            pkgs.lldb
             pkgs.libffi
             pkgs.libxml2
             (pkgs.rust-bin.nightly."2024-07-31".default.override {

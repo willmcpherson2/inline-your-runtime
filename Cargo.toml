@@ -3,3 +3,9 @@ cargo-features = ["edition2024"]
 [workspace]
 resolver = "3"
 members = ["compiler", "rts"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
