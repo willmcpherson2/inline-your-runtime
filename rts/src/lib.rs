@@ -1,15 +1,18 @@
 #![no_std]
 #![allow(internal_features, non_upper_case_globals)]
-#![feature(linkage, rustc_attrs)]
+#![feature(rustc_attrs)]
 
 extern crate alloc;
 
+use alloc::vec;
 use alloc::{
     alloc::{GlobalAlloc, Layout},
     boxed::Box,
+    ffi::CString,
+    vec::Vec,
 };
 use core::panic::PanicInfo;
-use libc::{aligned_alloc, c_void, free};
+use libc::{aligned_alloc, c_void, exit, free, puts};
 
 struct Allocator;
 
@@ -26,22 +29,45 @@ unsafe impl GlobalAlloc for Allocator {
 #[global_allocator]
 static GLOBAL: Allocator = Allocator;
 
+fn print_exit(message: &'static str, code: i32) -> ! {
+    if let Ok(message) = CString::new(message) {
+        unsafe { puts(message.as_ptr()) };
+    }
+    unsafe { exit(code) }
+}
+
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+fn panic(info: &PanicInfo) -> ! {
+    if let Some(message) = info.message().as_str() {
+        print_exit(message, 1)
+    } else {
+        print_exit("internal runtime error", 2)
+    }
 }
 
 #[rustc_std_internal_symbol]
-#[linkage = "weak"]
-static __rust_no_alloc_shim_is_unstable: u8 = 0;
+fn __rust_alloc_error_handler(_size: usize, _align: usize) -> ! {
+    print_exit("memory allocation failed", 3);
+}
 
 #[rustc_std_internal_symbol]
-#[linkage = "weak"]
-fn __rust_alloc_error_handler(size: usize, align: usize) {
-    panic!("allocation failed: size: {}, align: {}", size, align);
+static __rust_no_alloc_shim_is_unstable: u8 = 0;
+
+pub struct Foo {
+    numbers: Vec<i32>,
 }
 
 #[no_mangle]
-pub extern "C" fn foo() -> Box<i32> {
-    Box::new(42)
+pub extern "C" fn new_foo() -> Box<Foo> {
+    Box::new(Foo {
+        numbers: vec![1, 2, 3],
+    })
 }
+
+#[no_mangle]
+pub extern "C" fn sum_foo(foo: &Foo) -> i32 {
+    foo.numbers.iter().sum()
+}
+
+#[no_mangle]
+pub extern "C" fn free_foo(_foo: Box<Foo>) {}

@@ -1,4 +1,5 @@
 use inkwell::{context::Context, memory_buffer::MemoryBuffer, module::Module, OptimizationLevel};
+use std::process::exit;
 
 const RTS_BC: &[u8] = include_bytes!("../../target/rts.bc");
 
@@ -14,10 +15,25 @@ fn main() {
     let block = context.append_basic_block(main_fun, "start");
     builder.position_at_end(block);
 
-    let foo = module.get_function("foo").unwrap();
-    builder.build_call(foo, &[], "").unwrap();
+    let new_foo = module.get_function("new_foo").unwrap();
+    let foo = builder
+        .build_call(new_foo, &[], "foo")
+        .unwrap()
+        .try_as_basic_value()
+        .unwrap_left()
+        .into_pointer_value();
 
-    let result = context.i32_type().const_int(0, false);
+    let sum_foo = module.get_function("sum_foo").unwrap();
+    let result = builder
+        .build_call(sum_foo, &[foo.into()], "result")
+        .unwrap()
+        .try_as_basic_value()
+        .unwrap_left()
+        .into_int_value();
+
+    let free_foo = module.get_function("free_foo").unwrap();
+    builder.build_call(free_foo, &[foo.into()], "").unwrap();
+
     builder.build_return(Some(&result)).unwrap();
 
     module.verify().unwrap();
@@ -25,6 +41,6 @@ fn main() {
     let engine = module
         .create_jit_execution_engine(OptimizationLevel::None)
         .unwrap();
-
-    unsafe { engine.run_function_as_main(main_fun, &[]) };
+    let code = unsafe { engine.run_function_as_main(main_fun, &[]) };
+    exit(code);
 }
