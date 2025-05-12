@@ -1,5 +1,12 @@
-use inkwell::{context::Context, memory_buffer::MemoryBuffer, module::Module, OptimizationLevel};
-use std::process::exit;
+use inkwell::{
+    context::Context,
+    memory_buffer::MemoryBuffer,
+    module::Module,
+    targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
+    values::FunctionValue,
+    OptimizationLevel,
+};
+use std::{env::args, path::Path, process::exit};
 
 const RTS_BC: &[u8] = include_bytes!("../../target/rts.bc");
 
@@ -38,9 +45,38 @@ fn main() {
 
     module.verify().unwrap();
 
+    let eval = args().any(|arg| arg == "-e");
+
+    if eval {
+        jit(&module, main_fun)
+    } else {
+        compile(&module)
+    }
+}
+
+fn jit(module: &Module, main_fun: FunctionValue) -> ! {
     let engine = module
         .create_jit_execution_engine(OptimizationLevel::None)
         .unwrap();
     let code = unsafe { engine.run_function_as_main(main_fun, &[]) };
-    exit(code);
+    exit(code)
+}
+
+fn compile(module: &Module) {
+    Target::initialize_all(&InitializationConfig::default());
+    let target_triple = TargetMachine::get_default_triple();
+    let target = Target::from_triple(&target_triple).unwrap();
+    let target_machine = target
+        .create_target_machine(
+            &target_triple,
+            "generic",
+            "",
+            OptimizationLevel::Default,
+            RelocMode::Default,
+            CodeModel::Default,
+        )
+        .unwrap();
+    target_machine
+        .write_to_file(module, FileType::Object, Path::new("main.o"))
+        .unwrap();
 }
