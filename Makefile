@@ -1,6 +1,5 @@
-build: target/release/compiler
-
-target/release/compiler: target/rts.bc
+.PHONY: build
+build: target/rts.bc
 	cargo build --release
 
 target/rts.bc:
