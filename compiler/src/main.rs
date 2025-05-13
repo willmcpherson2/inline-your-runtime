@@ -2,7 +2,7 @@ use inkwell::{
     context::Context,
     memory_buffer::MemoryBuffer,
     module::Module,
-    targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
+    targets::{FileType, InitializationConfig, Target, TargetMachine, TargetMachineOptions},
     values::FunctionValue,
     OptimizationLevel,
 };
@@ -56,7 +56,7 @@ fn main() {
 
 fn jit(module: &Module, main_fun: FunctionValue) -> ! {
     let engine = module
-        .create_jit_execution_engine(OptimizationLevel::Default)
+        .create_jit_execution_engine(OptimizationLevel::None)
         .unwrap();
     let code = unsafe { engine.run_function_as_main(main_fun, &[]) };
     exit(code)
@@ -64,19 +64,13 @@ fn jit(module: &Module, main_fun: FunctionValue) -> ! {
 
 fn compile(module: &Module) {
     Target::initialize_all(&InitializationConfig::default());
-    let target_triple = TargetMachine::get_default_triple();
-    let target = Target::from_triple(&target_triple).unwrap();
-    let target_machine = target
-        .create_target_machine(
-            &target_triple,
-            "generic",
-            "",
-            OptimizationLevel::Default,
-            RelocMode::Default,
-            CodeModel::Default,
-        )
+    let triple = TargetMachine::get_default_triple();
+    let target = Target::from_triple(&triple).unwrap();
+    let options = TargetMachineOptions::new().set_level(OptimizationLevel::None);
+    let machine = target
+        .create_target_machine_from_options(&triple, options)
         .unwrap();
-    target_machine
+    machine
         .write_to_file(module, FileType::Object, Path::new("main.o"))
         .unwrap();
 }
