@@ -56,7 +56,7 @@ fn main() {
 
 fn jit(module: &Module, main_fun: FunctionValue) -> ! {
     let engine = module
-        .create_jit_execution_engine(OptimizationLevel::None)
+        .create_jit_execution_engine(OptimizationLevel::Default)
         .unwrap();
     let code = unsafe { engine.run_function_as_main(main_fun, &[]) };
     exit(code)
