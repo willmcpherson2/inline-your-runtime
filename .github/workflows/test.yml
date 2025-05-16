@@ -7,14 +7,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v31
-    - run: nix flake check
-    - run: nix develop -c make
-    - run: nix develop -c cargo build
-    - run: nix develop -c cargo test
-    - run: nix develop -c cargo miri test -p rts
+    - uses: nicknovitski/nix-develop@v1
+    - run: make
+    - run: cargo test
+    - run: cargo miri test -p rts
     - run: |
-        nix develop
         set +e
         cargo run -- -e
         if [ $? = 6 ]; then
@@ -23,7 +20,6 @@ jobs:
           exit 1
         fi
     - run: |
-        nix develop
         cargo run
         cc main.o -o main
         set +e
