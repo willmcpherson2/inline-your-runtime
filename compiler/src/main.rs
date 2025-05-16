@@ -1,9 +1,9 @@
 use inkwell::{
     context::Context,
     memory_buffer::MemoryBuffer,
-    module::Module,
+    module::{Linkage, Module},
+    passes::PassBuilderOptions,
     targets::{FileType, InitializationConfig, Target, TargetMachine, TargetMachineOptions},
-    values::FunctionValue,
     OptimizationLevel,
 };
 use std::{env::args, path::Path, process::exit};
@@ -15,6 +15,13 @@ fn main() {
     let buffer = MemoryBuffer::create_from_memory_range(RTS_BC, "rts");
     let module = Module::parse_bitcode_from_buffer(&buffer, &context).unwrap();
     let builder = context.create_builder();
+
+    for fun in module.get_functions() {
+        let global = fun.as_global_value();
+        if !global.is_declaration() {
+            global.set_linkage(Linkage::Internal);
+        }
+    }
 
     let main_fun_type = context.i32_type().fn_type(&[], false);
     let main_fun = module.add_function("main", main_fun_type, None);
@@ -43,26 +50,6 @@ fn main() {
 
     builder.build_return(Some(&result)).unwrap();
 
-    module.verify().unwrap();
-
-    let eval = args().any(|arg| arg == "-e");
-
-    if eval {
-        jit(&module, main_fun)
-    } else {
-        compile(&module)
-    }
-}
-
-fn jit(module: &Module, main_fun: FunctionValue) -> ! {
-    let engine = module
-        .create_jit_execution_engine(OptimizationLevel::None)
-        .unwrap();
-    let code = unsafe { engine.run_function_as_main(main_fun, &[]) };
-    exit(code)
-}
-
-fn compile(module: &Module) {
     Target::initialize_all(&InitializationConfig::default());
     let triple = TargetMachine::get_default_triple();
     let target = Target::from_triple(&triple).unwrap();
@@ -70,7 +57,23 @@ fn compile(module: &Module) {
     let machine = target
         .create_target_machine_from_options(&triple, options)
         .unwrap();
-    machine
-        .write_to_file(module, FileType::Object, Path::new("main.o"))
+
+    module
+        .run_passes("default<O3>", &machine, PassBuilderOptions::create())
         .unwrap();
+
+    module.verify().unwrap();
+
+    let eval = args().any(|arg| arg == "-e");
+    if eval {
+        let engine = module
+            .create_jit_execution_engine(OptimizationLevel::None)
+            .unwrap();
+        let code = unsafe { engine.run_function_as_main(main_fun, &[]) };
+        exit(code)
+    } else {
+        machine
+            .write_to_file(&module, FileType::Object, Path::new("main.o"))
+            .unwrap();
+    }
 }
