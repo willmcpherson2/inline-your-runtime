@@ -13,5 +13,23 @@ jobs:
     - run: nix develop -c cargo build
     - run: nix develop -c cargo test
     - run: nix develop -c cargo miri test -p rts
-    - run: nix develop -c cargo run -- -e ; [ $? = 6 ]
-    - run: nix develop -c cargo run && cc main.o -o main && valgrind ./main ; [ $? = 6 ]
+    - run: |
+        nix develop
+        set +e
+        cargo run -- -e
+        if [ $? = 6 ]; then
+          exit 0
+        else
+          exit 1
+        fi
+    - run: |
+        nix develop
+        cargo run
+        cc main.o -o main
+        set +e
+        valgrind ./main
+        if [ $? = 6 ]; then
+          exit 0
+        else
+          exit 1
+        fi
