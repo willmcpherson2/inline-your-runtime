@@ -45,6 +45,11 @@ fn __rust_alloc_error_handler(_size: usize, _align: usize) -> ! {
 #[rustc_std_internal_symbol]
 #[linkage = "weak"]
 #[allow(non_upper_case_globals)]
+static __rust_alloc_error_handler_should_panic: u8 = 0;
+
+#[rustc_std_internal_symbol]
+#[linkage = "weak"]
+#[allow(non_upper_case_globals)]
 static __rust_no_alloc_shim_is_unstable: u8 = 0;
 
 pub struct Foo {
