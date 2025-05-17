@@ -2,5 +2,6 @@
 /target/
 /main
 /*.o
+/*.s
 /*.ll
-/*.btc
+/*.bc
