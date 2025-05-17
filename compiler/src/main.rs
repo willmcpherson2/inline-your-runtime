@@ -20,7 +20,7 @@ fn main() {
         .unwrap();
 
     let context = Context::create();
-    let buffer = MemoryBuffer::create_from_memory_range(RTS_BC, "rts");
+    let buffer = MemoryBuffer::create_from_memory_range(RTS_BC, "main");
     let module = Module::parse_bitcode_from_buffer(&buffer, &context).unwrap();
     let builder = context.create_builder();
 
