@@ -29,3 +29,8 @@ build:
 		--passes="internalize,globaldce" \
 		target/rts.bc \
 		-o target/rts.bc
+
+	opt \
+		--passes="internalize" \
+		target/rts.bc \
+		-o target/rts.bc

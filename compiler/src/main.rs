@@ -24,10 +24,6 @@ fn main() {
     let module = Module::parse_bitcode_from_buffer(&buffer, &context).unwrap();
     let builder = context.create_builder();
 
-    module
-        .run_passes("internalize", &machine, PassBuilderOptions::create())
-        .unwrap();
-
     let main_fun_type = context.i32_type().fn_type(&[], false);
     let main_fun = module.add_function("main", main_fun_type, None);
 
