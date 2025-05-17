@@ -1,7 +1,7 @@
 use inkwell::{
     context::Context,
     memory_buffer::MemoryBuffer,
-    module::{Linkage, Module},
+    module::Module,
     passes::PassBuilderOptions,
     targets::{FileType, InitializationConfig, Target, TargetMachine, TargetMachineOptions},
     OptimizationLevel,
@@ -11,17 +11,22 @@ use std::{env::args, path::Path, process::exit};
 const RTS_BC: &[u8] = include_bytes!("../../target/rts.bc");
 
 fn main() {
+    Target::initialize_all(&InitializationConfig::default());
+    let triple = TargetMachine::get_default_triple();
+    let target = Target::from_triple(&triple).unwrap();
+    let options = TargetMachineOptions::new().set_level(OptimizationLevel::None);
+    let machine = target
+        .create_target_machine_from_options(&triple, options)
+        .unwrap();
+
     let context = Context::create();
     let buffer = MemoryBuffer::create_from_memory_range(RTS_BC, "rts");
     let module = Module::parse_bitcode_from_buffer(&buffer, &context).unwrap();
     let builder = context.create_builder();
 
-    for fun in module.get_functions() {
-        let global = fun.as_global_value();
-        if !global.is_declaration() {
-            global.set_linkage(Linkage::Internal);
-        }
-    }
+    module
+        .run_passes("internalize", &machine, PassBuilderOptions::create())
+        .unwrap();
 
     let main_fun_type = context.i32_type().fn_type(&[], false);
     let main_fun = module.add_function("main", main_fun_type, None);
@@ -49,14 +54,6 @@ fn main() {
     builder.build_call(free_foo, &[foo.into()], "").unwrap();
 
     builder.build_return(Some(&result)).unwrap();
-
-    Target::initialize_all(&InitializationConfig::default());
-    let triple = TargetMachine::get_default_triple();
-    let target = Target::from_triple(&triple).unwrap();
-    let options = TargetMachineOptions::new().set_level(OptimizationLevel::None);
-    let machine = target
-        .create_target_machine_from_options(&triple, options)
-        .unwrap();
 
     module
         .run_passes("default<O3>", &machine, PassBuilderOptions::create())
