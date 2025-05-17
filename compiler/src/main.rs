@@ -60,7 +60,7 @@ fn main() {
     let eval = args().any(|arg| arg == "-e");
     if eval {
         let engine = module
-            .create_jit_execution_engine(OptimizationLevel::None)
+            .create_jit_execution_engine(OptimizationLevel::Aggressive)
             .unwrap();
         let code = unsafe { engine.run_function_as_main(main_fun, &[]) };
         exit(code)
