@@ -51,20 +51,22 @@ pub struct Foo {
     numbers: Vec<i32>,
 }
 
-#[no_mangle]
-pub extern "C" fn new_foo() -> Box<Foo> {
-    Box::new(Foo {
-        numbers: vec![1, 2, 3],
-    })
-}
+impl Foo {
+    #[no_mangle]
+    pub extern "C" fn new_foo() -> Box<Foo> {
+        Box::new(Foo {
+            numbers: vec![1, 2, 3],
+        })
+    }
 
-#[no_mangle]
-pub extern "C" fn sum_foo(foo: &Foo) -> i32 {
-    foo.numbers.iter().sum()
-}
+    #[no_mangle]
+    pub extern "C" fn sum_foo(self: &Foo) -> i32 {
+        self.numbers.iter().sum()
+    }
 
-#[no_mangle]
-pub extern "C" fn free_foo(_foo: Box<Foo>) {}
+    #[no_mangle]
+    pub extern "C" fn free_foo(_foo: Box<Foo>) {}
+}
 
 #[cfg(test)]
 mod test {
@@ -72,9 +74,9 @@ mod test {
 
     #[test]
     fn test_rts() {
-        let foo = new_foo();
-        let result = sum_foo(&foo);
+        let foo = Foo::new_foo();
+        let result = foo.sum_foo();
         assert_eq!(result, 6);
-        free_foo(foo);
+        Foo::free_foo(foo);
     }
 }
