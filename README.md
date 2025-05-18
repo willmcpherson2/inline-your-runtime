@@ -1,3 +1,5 @@
+https://willmcpherson2.com/2025/05/18/inline-your-runtime.html
+
 # Inline Your Runtime
 
 Enter the shell:
